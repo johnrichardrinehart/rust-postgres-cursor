@@ -111,11 +111,28 @@ impl<'client> Cursor<'client> {
 }
 
 /// Iterator returning `Vec<Row>` for every call to `next()`.
-pub struct Iter<'a> {
+pub struct Iter<'b, 'a: 'b> {
+    cursor: &'b mut Cursor<'a>,
+}
+
+/// Iterator returning `Vec<Row>` for every call to `next()`.
+pub struct IntoIter<'a> {
     cursor: Cursor<'a>,
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl<'a> Iterator for IntoIter<'a> {
+    type Item = Result<Vec<Row>, postgres::Error>;
+
+    fn next(&mut self) -> Option<Result<Vec<Row>, postgres::Error>> {
+        if self.cursor.closed {
+            None
+        } else {
+            Some(self.cursor.next_batch())
+        }
+    }
+}
+
+impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
     type Item = Result<Vec<Row>, postgres::Error>;
 
     fn next(&mut self) -> Option<Result<Vec<Row>, postgres::Error>> {
@@ -129,14 +146,27 @@ impl<'a> Iterator for Iter<'a> {
 
 impl<'client> IntoIterator for Cursor<'client> {
     type Item = Result<Vec<Row>, postgres::Error>;
-    type IntoIter = Iter<'client>;
+    type IntoIter = IntoIter<'client>;
 
-    fn into_iter(self) -> Iter<'client> {
-        Iter { cursor: self }
+    fn into_iter(self) -> IntoIter<'client> {
+        IntoIter { cursor: self }
+    }
+}
+
+impl<'a, 'client> IntoIterator for &'a mut Cursor<'client> {
+    type Item = Result<Vec<Row>, postgres::Error>;
+    type IntoIter = Iter<'a, 'client>;
+
+    fn into_iter(self) -> Iter<'a, 'client> {
+        self.iter()
     }
 }
 
 impl<'a> Cursor<'a> {
+    pub fn iter<'b>(&'b mut self) -> Iter<'b, 'a> {
+        Iter { cursor: self }
+    }
+
     fn next_batch(&mut self) -> Result<Vec<Row>, postgres::Error> {
         let rows = self.client.query(&self.fetch_query[..], &[])?;
         if rows.len() < (self.batch_size as usize) {
@@ -341,7 +371,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in cursor {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -360,7 +390,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in cursor {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -406,7 +436,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in cursor {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -425,7 +455,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in cursor {
+            for batch in &mut cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
