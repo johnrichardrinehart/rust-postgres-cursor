@@ -111,11 +111,11 @@ impl<'client> Cursor<'client> {
 }
 
 /// Iterator returning `Vec<Row>` for every call to `next()`.
-pub struct Iter<'b, 'a: 'b> {
-    cursor: &'b mut Cursor<'a>,
+pub struct Iter<'a> {
+    cursor: Cursor<'a>,
 }
 
-impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
+impl<'a> Iterator for Iter<'a> {
     type Item = Result<Vec<Row>, postgres::Error>;
 
     fn next(&mut self) -> Option<Result<Vec<Row>, postgres::Error>> {
@@ -127,20 +127,16 @@ impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
     }
 }
 
-impl<'a, 'client> IntoIterator for &'a mut Cursor<'client> {
+impl<'client> IntoIterator for Cursor<'client> {
     type Item = Result<Vec<Row>, postgres::Error>;
-    type IntoIter = Iter<'a, 'client>;
+    type IntoIter = Iter<'client>;
 
-    fn into_iter(self) -> Iter<'a, 'client> {
-        self.iter()
+    fn into_iter(self) -> Iter<'client> {
+        Iter { cursor: self }
     }
 }
 
 impl<'a> Cursor<'a> {
-    pub fn iter<'b>(&'b mut self) -> Iter<'b, 'a> {
-        Iter { cursor: self }
-    }
-
     fn next_batch(&mut self) -> Result<Vec<Row>, postgres::Error> {
         let rows = self.client.query(&self.fetch_query[..], &[])?;
         if rows.len() < (self.batch_size as usize) {
