@@ -341,7 +341,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in &mut cursor {
+            for batch in cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -360,7 +360,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in &mut cursor {
+            for batch in cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -406,7 +406,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in &mut cursor {
+            for batch in cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
@@ -425,7 +425,7 @@ mod tests {
                 .unwrap();
 
             let mut got = 0;
-            for batch in &mut cursor {
+            for batch in cursor {
                 let batch = batch.unwrap();
                 got += batch.len();
             }
