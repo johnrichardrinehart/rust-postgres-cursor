@@ -115,6 +115,23 @@ pub struct Iter<'b, 'a: 'b> {
     cursor: &'b mut Cursor<'a>,
 }
 
+/// Iterator returning `Vec<Row>` for every call to `next()`.
+pub struct OwnedIter<'a> {
+    cursor: Cursor<'a>,
+}
+
+impl<'a> Iterator for OwnedIter<'a> {
+    type Item = Result<Vec<Row>, postgres::Error>;
+
+    fn next(&mut self) -> Option<Result<Vec<Row>, postgres::Error>> {
+        if self.cursor.closed {
+            None
+        } else {
+            Some(self.cursor.next_batch())
+        }
+    }
+}
+
 impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
     type Item = Result<Vec<Row>, postgres::Error>;
 
@@ -124,6 +141,15 @@ impl<'b, 'a: 'b> Iterator for Iter<'b, 'a> {
         } else {
             Some(self.cursor.next_batch())
         }
+    }
+}
+
+impl<'client> IntoIterator for Cursor<'client> {
+    type Item = Result<Vec<Row>, postgres::Error>;
+    type IntoIter = OwnedIter<'client>;
+
+    fn into_iter(self) -> OwnedIter<'client> {
+        OwnedIter { cursor: self }
     }
 }
 
